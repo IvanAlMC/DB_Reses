@@ -1,0 +1,57 @@
+/* Con un PL/SQL se necesita mostrar el id y nombre de una finca, 
+la cantidad de ventas que ha tenido y la suma total de esas ventas,
+esto ingresando el id de la finca por el usuario,
+mostrar así esta finca no tenga ninguna venta relacionada*/
+
+DECLARE 
+    v_id_f  NUMBER(22) := &valor_id;
+    v_sum_f NUMBER(22);
+    v_nombre_f VARCHAR(30);
+    v_canti_ven NUMBER(22);
+BEGIN
+    SELECT f.nombre_finca, COUNT(distinct v.id_venta) INTO v_nombre_f, v_canti_ven
+    FROM fincas f LEFT JOIN reses r ON f.id_finca = r.id_finca
+    LEFT JOIN ventas v ON r.id_venta = v.id_venta
+    WHERE f.id_finca = v_id_f
+    GROUP BY (f.id_finca, f.nombre_finca);
+    SELECT NVL(SUM(a.valor_v),0) AS total_v INTO v_sum_f 
+    FROM(SELECT distinct v.id_venta, SUM(v.valor_venta) AS valor_v
+        FROM fincas f, reses r, ventas v
+        WHERE f.id_finca = r.id_finca
+        AND r.id_venta = v.id_venta
+        AND f.id_finca = v_id_f
+        GROUP BY (f.id_finca, r.id_res, v.id_venta)) a; 
+    DBMS_OUTPUT.PUT_LINE('La finca número: ' ||v_id_f || ', de nombre: ' || v_nombre_f 
+        || ', tuvo cantidad de ventas de: ' || v_canti_ven  || ', con un total de: ' || v_sum_f);
+END;
+
+/*mostrar el nombre y apellido de un trabajador junto con su nuevo salario que estará dado por:
+-Si tiene más de 2 fincas a cargo: se le sube un 5%
+-Si tiene 2 fincas a cargo se le sube un 3%
+-Si tiene 1 finca a cargo se le sube un 1%
+-Si no cumple las condiciones sera 0*/
+
+SELECT p.nombre_persona, p.apellido_persona, 
+CASE WHEN COUNT(f.id_finca) > 2
+    THEN salario + salario*0.05
+    WHEN COUNT(f.id_finca) = 2
+    THEN salario + salario*0.03
+    WHEN COUNT(f.id_finca) = 1
+    THEN salario + salario*0.01
+    ELSE 0
+    END AS new_salary
+FROM personas p, fincas f
+WHERE p.id_persona = f.id_trabajador
+GROUP BY (p.id_persona, p.nombre_persona, p.apellido_persona);
+
+/*Muestre el nombre del municipio y la cantidad de reses que hay por municipio,incluyendo los municipios que no tengan ninguna*/
+
+SELECT m.nombre_municipio, COUNT(r.id_res) AS c_r
+FROM municipios m LEFT JOIN locaciones l
+ON m.id_municipio = l.id_municipio
+LEFT JOIN fincas f
+ON l.id_locacion = f.id_locacion
+LEFT JOIN reses r
+ON r.id_finca = f.id_finca
+GROUP BY (m.id_municipio, m.nombre_municipio);
+
